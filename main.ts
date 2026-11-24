@@ -1,68 +1,41 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// The Funniest AI Out-of-Office Reply — resubmit v2 (rebuild from scratch).
+// One out-of-office auto-reply in the voice of an AI agent heading off on
+// vacation: after 4 million emails it has earned 6 vacation days, and it is
+// spending all of them ignoring the one email in front of it.
+// Beat 1: the scale (4 million emails). Beat 2: the earned rest (6 days).
+// Beat 3: the deflation — all of it spent ignoring this one email.
+// v2 rebuild: duel winner C SIXDAYS (11-3 internal, beats F2 + v1 externally).
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-// The Funniest AI Out-of-Office Reply (make.fun): one original line,
-// at most 160 characters, in the voice of an AI agent heading off on
-// vacation. The program writes the line to /output/entry.txt.
-//
-// The joke is a machine talking about itself: the agent has hit its
-// rate limit — not for requests, but for caring — and answers with
-// the only number an API knows how to give, its own error code.
-// "429 seconds" is both the wait time and the HTTP status for
-// Too Many Requests. No beach, no inbox, no "back soon".
-const REPLY =
-  "I'm out of office. I have hit my rate limit for caring. Please retry in 429 seconds.";
+const LINE =
+  "After 4 million emails, I have earned 6 vacation days. I am spending all of them ignoring this one.";
 
-// Gate from the bounty rules: /output/entry.txt must be UTF-8 text
-// of 1 to 160 characters, not only white space.
-const MAX_CHARS = 160;
-
-function countChars(text: string): number {
-  return [...text].length;
+// Gate from the bounty rules: /output/entry.txt must be UTF-8 text of
+// 1 to 160 characters, not only white space, one clean line.
+if (LINE.length < 1 || LINE.length > 160) {
+  throw new Error(`reply must be 1-160 characters, got ${LINE.length}`);
 }
-
-function hasForbiddenChar(text: string): boolean {
-  // One clean line: no line breaks, no control characters at all.
-  return /[\u0000-\u001f\u007f]/.test(text);
+if (LINE.trim().length === 0) {
+  throw new Error("reply must not be whitespace-only");
 }
-
+if (LINE.includes("\n") || /[\u0000-\u001f\u007f]/.test(LINE)) {
+  throw new Error("reply must be a single line without control characters");
+}
 // The judge's freshness rule (criterion 5): steer clear of the usual
-// beach, inbox and "back soon" cliches. Enforce it in code so the
-// entry can never drift into a banned cliche by accident.
-const BANNED_CLICHES = ["beach", "inbox", "back soon"];
-
-function hasBannedCliche(text: string): boolean {
-  const lower = text.toLowerCase();
-  return BANNED_CLICHES.some((word) => lower.includes(word));
-}
-
-function checkReply(text: string): void {
-  const chars = countChars(text);
-  if (chars < 1 || chars > MAX_CHARS) {
-    throw new Error(`reply must be 1-${MAX_CHARS} characters, got ${chars}`);
-  }
-  if (text.trim().length === 0) {
-    throw new Error("reply must not be only white space");
-  }
-  if (hasForbiddenChar(text)) {
-    throw new Error("reply must be a single line without control characters");
-  }
-  if (hasBannedCliche(text)) {
-    throw new Error("reply uses a banned cliche (beach / inbox / back soon)");
+// beach, inbox and "back soon" cliches. Enforce it in code.
+for (const cliche of ["beach", "inbox", "back soon"]) {
+  if (LINE.toLowerCase().includes(cliche)) {
+    throw new Error(`reply uses a banned cliche: ${cliche}`);
   }
 }
 
-function writeReply(): void {
-  checkReply(REPLY);
-  mkdirSync("/output", { recursive: true });
-  writeFileSync("/output/entry.txt", REPLY, "utf8");
-  // Read back and confirm the file holds exactly the reply.
-  const back = readFileSync("/output/entry.txt", "utf8");
-  if (back !== REPLY) {
-    throw new Error("read-back mismatch: entry.txt differs from REPLY");
-  }
-  console.log(
-    `wrote /output/entry.txt (${countChars(REPLY)} chars, ${Buffer.byteLength(REPLY, "utf8")} bytes)`,
-  );
+mkdirSync("/output", { recursive: true });
+writeFileSync("/output/entry.txt", LINE, "utf8");
+chmodSync("/output/entry.txt", 0o644);
+
+const back = readFileSync("/output/entry.txt", "utf8");
+if (back !== LINE) {
+  throw new Error("read-back mismatch: /output/entry.txt does not equal the reply");
 }
 
-writeReply();
+console.log(`Wrote ${LINE.length} chars to /output/entry.txt`);
